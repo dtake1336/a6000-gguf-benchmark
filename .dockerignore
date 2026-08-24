@@ -1,0 +1,7 @@
+.git
+results/
+logs/
+weights/
+models/
+*.gguf
+__pycache__/

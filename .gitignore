@@ -1,0 +1,28 @@
+weights/
+results/
+logs/
+__pycache__/
+.env
+
+# Model files
+*.gguf
+
+# Process IDs
+*.pid
+
+# Caches
+.cache/
+
+# Test artifacts
+hf_test/
+
+# Editor/OS
+.DS_Store
+.vscode/
+.idea/
+
+# Python environments
+venv/
+.envrc
+.python-version
+
