@@ -207,6 +207,7 @@ GPU=0 make bench
 - `qwen36_35b_q4km`
 - `nemotron_q4ks`
 - `laguna_q4xl`、`laguna_q4m`
+- `laguna_iq4nl`
 
 ```bash
 GPU=0,1 GPU_MODE=2gpu-layer make bench
@@ -214,6 +215,7 @@ GPU=0,1 GPU_MODE=2gpu-row make bench
 GPU=0 make bench-qwen38
 GPU=0 make bench-qwen36-35b
 GPU=0 make bench-nemotron
+make bench-laguna-iq4nl  # デフォルトでGPU 0,1をlayer-splitで使用
 ```
 
 Qwen3.6-35Bを常駐serverとして起動する場合:

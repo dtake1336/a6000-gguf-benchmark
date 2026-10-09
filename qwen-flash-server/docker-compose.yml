@@ -1,0 +1,47 @@
+services:
+  qwen:
+    image: qwen-flash-next:latest
+    build:
+      context: .
+      args:
+        CUDA_IMAGE: ${CUDA_IMAGE:-nvidia/cuda:12.8.1-devel-ubuntu24.04}
+        LLAMA_CPP_REF: ${LLAMA_CPP_REF:-911f6cdc8ab8a530b2bee09ee61471a6f3178eeb}
+        CUDA_ARCHITECTURES: ${CUDA_ARCHITECTURES:-86}
+    container_name: qwen-flash-next
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8080}:8080"
+    volumes:
+      - "${MODEL_ROOT:-../weights}:/models:ro"
+    environment:
+      MODEL_PATH: ${MODEL_PATH:-/models/qwen38-flash-next/UD-IQ4_XS/Qwen3.8-Flash-Next-UD-IQ4_XS-00001-of-00003.gguf}
+      MODEL_ALIAS: ${MODEL_ALIAS:-qwen3.8-flash-next}
+      HOST: ${HOST:-0.0.0.0}
+      PORT: ${CONTAINER_PORT:-8080}
+      CTX_SIZE: ${CTX_SIZE:-261888}
+      PARALLEL: ${PARALLEL:-1}
+      BATCH_SIZE: ${BATCH_SIZE:-2048}
+      UBATCH_SIZE: ${UBATCH_SIZE:-256}
+      CACHE_TYPE_K: ${CACHE_TYPE_K:-q8_0}
+      CACHE_TYPE_V: ${CACHE_TYPE_V:-q8_0}
+      TENSOR_SPLIT: ${TENSOR_SPLIT:-1,1}
+      N_GPU_LAYERS: ${N_GPU_LAYERS:-999}
+      CONT_BATCHING: ${CONT_BATCHING:-true}
+      TEMPERATURE: ${TEMPERATURE:-0.2}
+      TOP_P: ${TOP_P:-0.95}
+      NVIDIA_VISIBLE_DEVICES: "0,1"
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["0", "1"]
+              capabilities: [gpu]
+    shm_size: "16gb"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 600s

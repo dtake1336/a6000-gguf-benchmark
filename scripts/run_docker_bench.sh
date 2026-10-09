@@ -25,6 +25,7 @@ model_info() {
     qwen36_35b_q4km) echo "QWEN36_35B_Q4KM_MODEL qwen36-35b-q4km qwen36-35b-q4km-1gpu" ;;
     nemotron_q4ks) echo "NEMOTRON_Q4KS_MODEL nemotron-3.5-q4ks nemotron-q4ks-1gpu" ;;
     laguna_q4xl) echo "LAGUNA_Q4XL_MODEL laguna-q4xl laguna-q4xl" ;;
+    laguna_iq4nl) echo "LAGUNA_IQ4NL_MODEL laguna-iq4nl laguna-iq4nl" ;;
     laguna_q4m)  echo "LAGUNA_Q4M_MODEL laguna-q4m laguna-q4m" ;;
     *) echo "Unknown model key: $1" >&2; exit 2 ;;
   esac

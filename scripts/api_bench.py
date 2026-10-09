@@ -74,6 +74,34 @@ def extract_metrics(response: dict[str, Any], wall_seconds: float) -> dict[str, 
     }
 
 
+def stream_completion(url: str, body: dict[str, Any], timeout: float) -> dict[str, Any]:
+    started = time.perf_counter()
+    first_content_at: float | None = None
+    final_response: dict[str, Any] = {}
+    stream_body = {**body, "stream": True}
+    with requests.post(url, json=stream_body, timeout=timeout, stream=True) as response:
+        response.raise_for_status()
+        for line in response.iter_lines(decode_unicode=True):
+            if not line:
+                continue
+            payload = line[5:].strip() if line.startswith("data:") else line.strip()
+            if payload == "[DONE]":
+                continue
+            try:
+                chunk = json.loads(payload)
+            except json.JSONDecodeError:
+                continue
+            final_response = chunk
+            if first_content_at is None and chunk.get("content"):
+                first_content_at = time.perf_counter()
+    elapsed = time.perf_counter() - started
+    metrics = extract_metrics(final_response, elapsed)
+    metrics["ttft_seconds"] = (
+        first_content_at - started if first_content_at is not None else None
+    )
+    return metrics
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--base-url", default="http://127.0.0.1:8000")
@@ -82,6 +110,11 @@ def main() -> None:
     ap.add_argument("--repetitions", type=int, default=5)
     ap.add_argument("--warmups", type=int, default=1)
     ap.add_argument("--timeout", type=float, default=1800)
+    ap.add_argument(
+        "--measure-ttft",
+        action="store_true",
+        help="Use native streaming completion and record time to first content.",
+    )
     ap.add_argument("--output", type=Path, required=True)
     args = ap.parse_args()
 
@@ -102,17 +135,26 @@ def main() -> None:
                 "ignore_eos": True,
             }
             for _ in range(args.warmups):
-                post_json(f"{args.base_url}/completion", body, args.timeout)
+                if args.measure_ttft:
+                    stream_completion(f"{args.base_url}/completion", body, args.timeout)
+                else:
+                    post_json(f"{args.base_url}/completion", body, args.timeout)
             for rep in range(args.repetitions):
-                started = time.perf_counter()
-                response = post_json(f"{args.base_url}/completion", body, args.timeout)
-                elapsed = time.perf_counter() - started
+                if args.measure_ttft:
+                    metrics = stream_completion(
+                        f"{args.base_url}/completion", body, args.timeout
+                    )
+                else:
+                    started = time.perf_counter()
+                    response = post_json(f"{args.base_url}/completion", body, args.timeout)
+                    elapsed = time.perf_counter() - started
+                    metrics = extract_metrics(response, elapsed)
                 row = {
                     "target_prompt_tokens": target_prompt,
                     "tokenized_prompt_tokens": measured_prompt,
                     "requested_generation_tokens": n_predict,
                     "repetition": rep + 1,
-                    **extract_metrics(response, elapsed),
+                    **metrics,
                 }
                 records.append(row)
                 print(json.dumps(row, ensure_ascii=False), flush=True)

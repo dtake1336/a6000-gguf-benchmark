@@ -2,6 +2,10 @@ IMAGE ?= a6000-gguf-bench:latest
 CUDA_IMAGE ?= nvidia/cuda:12.4.1-devel-ubuntu22.04
 LLAMA_CPP_REF ?= b10509
 LM_EVAL_REF ?= v0.4.12
+QWEN_FLASH_SERVER_DIR ?= $(CURDIR)/qwen-flash-server
+QWEN_FLASH_COMPOSE_FILE ?= $(QWEN_FLASH_SERVER_DIR)/docker-compose.yml
+QWEN_FLASH_ENV_FILE ?= $(QWEN_FLASH_SERVER_DIR)/.env
+QWEN_FLASH_COMPOSE = docker compose $(if $(wildcard $(QWEN_FLASH_ENV_FILE)),--env-file $(QWEN_FLASH_ENV_FILE),) -f $(QWEN_FLASH_COMPOSE_FILE)
 MODEL_ROOT ?= $(CURDIR)/weights
 RESULT_ROOT ?= $(CURDIR)/results
 DOWNLOAD_SET ?= recommended
@@ -15,7 +19,7 @@ NEMOTRON_SERVER_NAME ?= a6000-nemotron-server
 NEMOTRON_MODEL_PATH ?= /models/nemotron-3.5-lightning-30b-a3b/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-UD-Q4_K_S.gguf
 NEMOTRON_CTX_SIZE ?= 1048576
 
-.PHONY: all build download download-hf clean bench smoke serve-qwen36-35b serve-nemotron bench-qwen38 bench-qwen36-35b bench-nemotron
+.PHONY: all build download download-hf clean bench smoke serve-qwen36-35b serve-nemotron bench-qwen38 bench-qwen36-35b bench-nemotron bench-laguna-iq4nl qwen-flash-build qwen-flash-up qwen-flash-down qwen-flash-health qwen-flash-benchmark
 
 all: build
 
@@ -112,6 +116,26 @@ bench-nemotron:
 	IMAGE="$(IMAGE)" MODEL_ROOT="$(MODEL_ROOT)" RESULT_ROOT="$(RESULT_ROOT)" \
 	GPU_REQUEST="$(GPU)" GPU_MODE="$(GPU_MODE)" PORT="$(PORT)" \
 	bash scripts/run_docker_bench.sh nemotron_q4ks
+
+bench-laguna-iq4nl:
+	IMAGE="$(IMAGE)" MODEL_ROOT="$(MODEL_ROOT)" RESULT_ROOT="$(RESULT_ROOT)" \
+	GPU_REQUEST="${GPU:-0,1}" GPU_MODE="${GPU_MODE:-2gpu-layer}" PORT="$(PORT)" \
+	bash scripts/run_docker_bench.sh laguna_iq4nl
+
+qwen-flash-build:
+	$(QWEN_FLASH_COMPOSE) build
+
+qwen-flash-up:
+	$(QWEN_FLASH_COMPOSE) up -d
+
+qwen-flash-down:
+	$(QWEN_FLASH_COMPOSE) down
+
+qwen-flash-health:
+	bash $(QWEN_FLASH_SERVER_DIR)/scripts/healthcheck.sh
+
+qwen-flash-benchmark:
+	bash $(QWEN_FLASH_SERVER_DIR)/scripts/benchmark.sh
 
 smoke:
 	IMAGE="$(IMAGE)" MODEL_ROOT="$(MODEL_ROOT)" RESULT_ROOT="$(RESULT_ROOT)" \
